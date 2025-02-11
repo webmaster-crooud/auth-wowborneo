@@ -12,3 +12,10 @@ export interface ApiErrorResponse {
 	errors: Array<{ field?: string; message: string }>;
 	stack?: string; // Hanya ada di development
 }
+
+export interface Account {
+	email: string;
+	firstName: string;
+	lastName: string;
+	role: string;
+}

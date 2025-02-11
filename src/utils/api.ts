@@ -1,31 +1,30 @@
-import { ApiErrorResponse } from "@/types/main.type";
-import axios, { AxiosError, AxiosRequestConfig } from "axios";
+import axios, { AxiosRequestConfig, AxiosError } from "axios";
 import { ApiError } from "./ApiError";
+import { ApiErrorResponse } from "../types/main.type";
 
-const api = axios;
+const BASE_URL = process.env.NEXT_PUBLIC_API; // Sesuaikan dengan base URL backend Anda
 
-api.create({
-	baseURL: process.env.NEXT_PUBLIC_API,
-	timeout: 5000,
-	headers: { "Content-Type": "application/json" },
-	withCredentials: true,
+// Buat instance axios
+const api = axios.create({
+	baseURL: BASE_URL,
+	withCredentials: true, // Sertakan cookie untuk session management
 });
 
-api.interceptors.request.use(async (config) => {
-	let csrfToken: string = "";
+// Interceptor untuk menambahkan CSRF token ke setiap request
+let csrfToken: string | null = null;
 
+api.interceptors.request.use(async (config) => {
 	if (!csrfToken) {
-		const response = await axios.get<{ csrfToken: string }>("/csrf-token", {
+		const csrfResponse = await axios.get<{ csrfToken: string }>(`${BASE_URL}/csrf-token`, {
 			withCredentials: true,
 		});
-
-		csrfToken = response.data.csrfToken;
+		csrfToken = csrfResponse.data.csrfToken;
 	}
-
-	config.headers["X-CSRF-TOKEN"] = csrfToken;
+	config.headers["X-CSRF-Token"] = csrfToken;
 	return config;
 });
 
+// Error handler untuk response
 api.interceptors.response.use(
 	(response) => response,
 	(error: AxiosError<ApiErrorResponse>) => {
