@@ -4,14 +4,13 @@ import { errorAtom, loadingAtom } from "@/stores/main.store";
 import { LoginCredentialInterface } from "@/types/auth.type";
 // import { api } from "@/utils/api";
 import { fetchError } from "@/utils/fetchError";
-import { IconLoader, IconStarFilled } from "@tabler/icons-react";
+import { IconLoader } from "@tabler/icons-react";
 import { useAtom, useSetAtom } from "jotai";
 import React, { useState } from "react";
-import { RadioForm } from "../ui/Form/Radio.form";
 import { InputForm } from "../ui/Form/Input.form";
 import Link from "next/link";
 
-export function LoginAuthentication() {
+export function CustomerLoginAuthentication() {
 	const setError = useSetAtom(errorAtom);
 	const [loading, setLoading] = useAtom(loadingAtom);
 
@@ -39,16 +38,7 @@ export function LoginAuthentication() {
 	}
 
 	return (
-		<form onSubmit={handleSubmit} className="flex flex-col gap-y-5">
-			<div>
-				<label htmlFor="role" className="font-bold text-xl mb-3 flex items-center justify-start gap-1">
-					Looking For? <IconStarFilled size={7} stroke={2} className="text-red-500" />
-				</label>
-				<div className="grid grid-cols-2 gap-5 items-center">
-					<RadioForm className={`${credential.role == "agen" && "bg-brown/10 border-brown"}`} credential={credential} setCredential={setCredential} value="agen" />
-					<RadioForm className={`${credential.role == "admin" && "bg-brown/10 border-brown"}`} credential={credential} setCredential={setCredential} value="admin" />
-				</div>
-			</div>
+		<form onSubmit={handleSubmit} className="flex flex-col gap-y-5 py-8">
 			<InputForm value={credential.email} isRequired handleInputChange={handleInputChange} title="email" type="email" placeholder="Enter your email" />
 			<InputForm value={credential.password} isRequired handleInputChange={handleInputChange} title="password" type="password" placeholder="********" />
 

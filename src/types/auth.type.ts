@@ -19,6 +19,7 @@ export interface RegisterResponseInterface {
 export interface LoginCredentialInterface {
 	email: string;
 	password: string;
+	role: string;
 }
 
 export interface LoginReponseInterface {
