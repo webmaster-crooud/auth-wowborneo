@@ -2,17 +2,18 @@
 import { VerifyForgotPassword } from "@/components/AUTH/ForgotPasword/Verify";
 import { MainCard } from "@/components/ui/Card/Main.card";
 import { Steps } from "@/components/ui/Steps";
-import { redirect, useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
 export default function VerifyForgotPasswordPage() {
 	const { email } = useParams();
+	const router = useRouter();
 	let decodeEmail;
 	if (!email) {
-		redirect("/register");
+		router.push("/register");
 	} else {
 		decodeEmail = decodeURIComponent(String(email));
 		if (!decodeEmail.includes("@")) {
-			redirect("/register");
+			router.push("/register");
 		}
 	}
 	return (
@@ -25,7 +26,7 @@ export default function VerifyForgotPasswordPage() {
 					</>
 				}
 			>
-				<VerifyForgotPassword email={decodeEmail} />
+				<VerifyForgotPassword email={decodeEmail || ""} />
 			</MainCard>
 			<Steps />
 		</>
