@@ -30,12 +30,9 @@ api.interceptors.response.use(
 	(error: AxiosError<ApiErrorResponse>) => {
 		if (error.response) {
 			const { data, status } = error.response;
-
-			// Jika ada validation errors
 			if (data.errors && data.errors.length > 0) {
 				throw new ApiError(data.message, status, data.errors);
 			} else {
-				// Jika tidak ada validation errors, anggap sebagai error umum
 				throw new ApiError(data.message, status);
 			}
 		} else {
