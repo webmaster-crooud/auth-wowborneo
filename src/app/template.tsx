@@ -30,7 +30,7 @@ export default function RootTemplate({ children }: { children: React.ReactNode }
 						{children}
 					</div>
 				</div>
-				<div className={`h-full w-full ${pathName === "/login" ? "bg-[url('/photos/customer-authentication.jpg')]" : "bg-[url('/photos/authentication.jpg')]"} bg-center bg-brown bg-no-repeat bg-cover relative`}>
+				<div className={`h-full w-full ${pathName === "/" ? "bg-[url('/photos/customer-authentication.jpg')]" : "bg-[url('/photos/authentication.jpg')]"} bg-center bg-brown bg-no-repeat bg-cover relative`}>
 					<MainNavbar />
 				</div>
 			</main>

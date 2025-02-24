@@ -1,18 +1,30 @@
 "use client";
 import AuthService from "@/services/auth.service";
-import { errorAtom, loadingAtom } from "@/stores/main.store";
+import { errorAtom, loadingAtom, notificationAtom } from "@/stores/main.store";
 import { LoginCredentialInterface } from "@/types/auth.type";
 // import { api } from "@/utils/api";
 import { fetchError } from "@/utils/fetchError";
 import { IconLoader } from "@tabler/icons-react";
 import { useAtom, useSetAtom } from "jotai";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { InputForm } from "../ui/Form/Input.form";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 export function CustomerLoginAuthentication() {
 	const setError = useSetAtom(errorAtom);
 	const [loading, setLoading] = useAtom(loadingAtom);
+	const sParams = useSearchParams();
+	const setNotification = useSetAtom(notificationAtom);
+	useEffect(() => {
+		const notificationParam = sParams.get("notification");
+		if (notificationParam) {
+			setNotification({
+				title: "Verifikasi Email Berhasil!",
+				message: notificationParam,
+			});
+		}
+	}, [setNotification, sParams]);
 
 	const [credential, setCredential] = useState<LoginCredentialInterface>({ email: "", password: "", role: "" });
 	const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -28,7 +40,7 @@ export function CustomerLoginAuthentication() {
 		setLoading({ field: "loading" });
 		try {
 			// await new Promise((resolve) => setTimeout(resolve, 1500));
-			const response = await AuthService.login(credential, setError);
+			const response = await AuthService.login(credential);
 			console.log(response);
 		} catch (error) {
 			fetchError(error, setError);

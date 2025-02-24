@@ -3,6 +3,7 @@ import "./globals.css";
 import { Providers } from "@/providers/main";
 import { ErrorAlert } from "@/components/ui/Alert/Error.alert";
 import { openSans } from "@/utils/fonts";
+import { NotificationAlert } from "@/components/ui/Alert/Notification.alert";
 
 export const metadata: Metadata = {
 	title: "Wow Borneo | Authenticatin",
@@ -26,6 +27,7 @@ export default function RootLayout({
 			<body className={`antialiased ${openSans.className}`}>
 				<Providers>
 					<ErrorAlert />
+					<NotificationAlert />
 					{children}
 				</Providers>
 			</body>

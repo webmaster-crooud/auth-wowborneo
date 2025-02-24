@@ -1,11 +1,3 @@
-export interface ErrorState {
-	message: string;
-	errors?: {
-		field: string | undefined;
-		message: string;
-	}[];
-}
-
 export interface ApiErrorResponse {
 	success: false;
 	message: string;
@@ -13,9 +5,15 @@ export interface ApiErrorResponse {
 	stack?: string; // Hanya ada di development
 }
 
-export interface Account {
-	email: string;
-	firstName: string;
-	lastName: string;
-	role: string;
+export interface ApiSuccessResponse<T = unknown> {
+	success: true;
+	data: T;
+}
+
+export interface ErrorState {
+	message: string;
+	errors?: {
+		field: string | undefined;
+		message: string;
+	}[];
 }

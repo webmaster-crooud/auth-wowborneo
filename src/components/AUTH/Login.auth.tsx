@@ -1,15 +1,14 @@
 "use client";
-import AuthService from "@/services/auth.service";
 import { errorAtom, loadingAtom } from "@/stores/main.store";
 import { LoginCredentialInterface } from "@/types/auth.type";
 // import { api } from "@/utils/api";
 import { fetchError } from "@/utils/fetchError";
-import { IconLoader, IconStarFilled } from "@tabler/icons-react";
+import { IconLoader } from "@tabler/icons-react";
 import { useAtom, useSetAtom } from "jotai";
 import React, { useState } from "react";
-import { RadioForm } from "../ui/Form/Radio.form";
 import { InputForm } from "../ui/Form/Input.form";
 import Link from "next/link";
+import authService from "@/services/auth.service";
 
 export function LoginAuthentication() {
 	const setError = useSetAtom(errorAtom);
@@ -24,31 +23,25 @@ export function LoginAuthentication() {
 		}));
 	};
 
-	async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-		setLoading({ field: "loading" });
+		setLoading({ field: "login" });
+
 		try {
-			// await new Promise((resolve) => setTimeout(resolve, 1500));
-			const response = await AuthService.login(credential, setError);
-			console.log(response);
-		} catch (error) {
-			fetchError(error, setError);
+			const { data } = await authService.login(credential);
+			const { redirect } = data;
+			console.log(redirect);
+
+			window.location.href = redirect;
+		} catch (err) {
+			fetchError(err, setError);
 		} finally {
 			setLoading({ field: "" });
 		}
-	}
+	};
 
 	return (
-		<form onSubmit={handleSubmit} className="flex flex-col gap-y-5">
-			<div>
-				<label htmlFor="role" className="font-bold text-xl mb-3 flex items-center justify-start gap-1">
-					Looking For? <IconStarFilled size={7} stroke={2} className="text-red-500" />
-				</label>
-				<div className="grid grid-cols-2 gap-5 items-center">
-					<RadioForm className={`${credential.role == "agen" && "bg-brown/10 border-brown"}`} credential={credential} setCredential={setCredential} value="agen" />
-					<RadioForm className={`${credential.role == "admin" && "bg-brown/10 border-brown"}`} credential={credential} setCredential={setCredential} value="admin" />
-				</div>
-			</div>
+		<form onSubmit={handleSubmit} className="flex flex-col gap-y-5 my-5">
 			<InputForm value={credential.email} isRequired handleInputChange={handleInputChange} title="email" type="email" placeholder="Enter your email" />
 			<InputForm value={credential.password} isRequired handleInputChange={handleInputChange} title="password" type="password" placeholder="********" />
 
@@ -68,10 +61,10 @@ export function LoginAuthentication() {
 				{loading.field === "login" ? (
 					<>
 						<IconLoader className="animate-spin" size={20} stroke={2} />
-						<span>Continue To Confirm</span>
+						<span>Loading...</span>
 					</>
 				) : (
-					<span>Continue To Confirm</span>
+					<span>Login</span>
 				)}
 			</button>
 		</form>

@@ -1,4 +1,4 @@
-import { Account } from "./main.type";
+import { Account } from "./account";
 
 export interface RegisterInterface {
 	firstName: string;

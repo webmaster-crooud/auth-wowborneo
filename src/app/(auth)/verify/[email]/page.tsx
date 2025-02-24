@@ -2,9 +2,10 @@
 
 import { MainCard } from "@/components/ui/Card/Main.card";
 import { errorAtom, loadingAtom, notificationAtom } from "@/stores/main.store";
+import { ApiSuccessResponse } from "@/types/main.type";
 import { api } from "@/utils/api";
 import { fetchError } from "@/utils/fetchError";
-import { IconArrowBack, IconLoader, IconLockAccess } from "@tabler/icons-react";
+import { IconArrowBack, IconLoader, IconLoader3, IconLockAccess, IconMailFast, IconWebhook } from "@tabler/icons-react";
 import { useAtom, useSetAtom } from "jotai";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -17,21 +18,23 @@ interface InputOTPInterface {
 	codeFive: string;
 }
 
-export default function VerifyForgotPasswordPage() {
+export default function VerifyEmailPage() {
 	const { email } = useParams();
 	const router = useRouter();
-	let decodeEmail;
-	if (!email) {
+	const decodeEmail: string = email ? decodeURIComponent(String(email)) : "";
+	if (!decodeEmail || !decodeEmail.includes("@")) {
 		router.push("/register");
-	} else {
-		decodeEmail = decodeURIComponent(String(email));
-		if (!decodeEmail.includes("@")) {
-			router.push("/register");
-		}
 	}
 
+	const [OTP, setOTP] = useState<string>("");
+	const setError = useSetAtom(errorAtom);
+	const [loading, setLoading] = useAtom(loadingAtom);
 	const sParams = useSearchParams();
 	const setNotification = useSetAtom(notificationAtom);
+	const [resendDisabled, setResendDisabled] = useState<boolean>(false);
+	const [countdown, setCountdown] = useState<number>(300); // 5 minutes in seconds
+
+	const pathname = usePathname();
 	useEffect(() => {
 		const notificationParam = sParams.get("notification");
 		if (notificationParam) {
@@ -42,31 +45,6 @@ export default function VerifyForgotPasswordPage() {
 		}
 	}, [setNotification, sParams]);
 
-	const [OTP, setOTP] = useState<string>("");
-	const setError = useSetAtom(errorAtom);
-	const [loading, setLoading] = useAtom(loadingAtom);
-	const handleSubmit = async () => {
-		setLoading({ field: "register" });
-		try {
-			const response = await api.post(
-				`${process.env.NEXT_PUBLIC_API}/auth/verify?token=${OTP}`,
-				{},
-				{
-					headers: { "Content-Type": "application/json" },
-				}
-			);
-			const { redirect } = response.data.data;
-			if (redirect !== "") {
-				window.location.href = `${redirect}`;
-			}
-		} catch (error) {
-			fetchError(error, setError);
-		} finally {
-			setLoading({ field: "" });
-		}
-	};
-
-	const pathname = usePathname();
 	const [inputOtp, setInputOtp] = useState<InputOTPInterface>({
 		codeOne: "",
 		codeTwo: "",
@@ -108,6 +86,66 @@ export default function VerifyForgotPasswordPage() {
 		}
 	};
 
+	const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+		e.preventDefault();
+		setLoading({ field: "verify" });
+		try {
+			const response = await api.post(
+				`${process.env.NEXT_PUBLIC_API}/auth/verify?token=${OTP}`,
+				{},
+				{
+					headers: { "Content-Type": "application/json" },
+				}
+			);
+			const { redirect } = response.data.data;
+			if (redirect !== "") {
+				window.location.href = `${redirect}`;
+			}
+		} catch (error) {
+			fetchError(error, setError);
+		} finally {
+			setLoading({ field: "" });
+		}
+	};
+
+	const formatCountdown = (count: number) => {
+		const minutes = Math.floor(count / 60);
+		const seconds = count % 60;
+		return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
+	};
+
+	const handleResendEmail = async () => {
+		setLoading({ field: "resend" });
+		try {
+			const response = await api.patch<ApiSuccessResponse<{ data: { message: string }; message: string }>>(`${process.env.NEXT_PUBLIC_API}/auth/verify/resend/${decodeEmail}`, {
+				headers: { "Content-Type": "application/json" },
+			});
+
+			const { message } = response.data.data;
+			if (message !== "") {
+				setResendDisabled(true);
+				const intervalId = setInterval(() => {
+					setCountdown((prev) => {
+						if (prev <= 1) {
+							clearInterval(intervalId);
+							setResendDisabled(false);
+							return 300;
+						}
+						return prev - 1;
+					});
+				}, 1000);
+				setNotification({
+					title: "Berhasil Mengirim Kode OTP",
+					message: message,
+				});
+			}
+		} catch (error) {
+			fetchError(error, setError);
+		} finally {
+			setLoading({ field: "" });
+		}
+	};
+
 	return (
 		<>
 			<MainCard
@@ -124,8 +162,9 @@ export default function VerifyForgotPasswordPage() {
 							<input key={name} ref={inputRefs[index]} type="text" autoComplete="off" inputMode="numeric" pattern="[0-9]*" maxLength={1} name={name} value={inputOtp[name as keyof InputOTPInterface]} className="flex w-full items-center justify-center rounded-2xl p-3 text-center border-2 text-5xl font-bold border-d6 outline-none" onChange={handleChangeInputOTP} />
 						))}
 					</div>
-					<button type="button" className="text-sm text-orange-600 text-start">
-						<b>Resend Email</b>
+					<button type="button" onClick={handleResendEmail} className="text-orange-600 font-semibold text-start flex items-center justify-start gap-2" disabled={resendDisabled}>
+						{loading?.field === "resend" ? <IconLoader3 className="animate-spin" stroke={2} size={20} /> : resendDisabled ? <IconWebhook className="animate-spin" stroke={2} size={20} /> : <IconMailFast stroke={2} size={25} />}
+						<span className="font-medium">{resendDisabled ? `Menunggu (${formatCountdown(countdown)})` : "Kirim Ulang OTP"}</span>
 					</button>
 
 					{/* Button */}
@@ -134,6 +173,7 @@ export default function VerifyForgotPasswordPage() {
 							<IconArrowBack size={20} stroke={1.3} />
 							<span>Back</span>
 						</button>
+
 						<button type="submit" className="w-full bg-brown rounded-2xl text-white py-4 flex items-center justify-center gap-2 disabled:opacity-60" disabled={loading.field === "verify"}>
 							{loading.field === "verify" ? (
 								<>

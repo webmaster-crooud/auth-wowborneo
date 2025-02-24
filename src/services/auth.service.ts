@@ -1,20 +1,63 @@
-import { LoginCredentialInterface, LoginReponseInterface } from "@/types/auth.type";
-import { ErrorState } from "@/types/main.type";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// src/services/auth.service.ts
+
+import { Account, LoginCredentials, RefreshTokenResponse } from "@/types/auth.DTO";
+import { ApiSuccessResponse } from "@/types/main.type";
 import { api } from "@/utils/api";
-import { fetchError } from "@/utils/fetchError";
+import { ApiError } from "@/utils/ApiError";
+interface LoginSuccessResponse {
+	redirect: string;
+	account: Account;
+}
 
-import { SetStateAction } from "jotai";
-
-const AuthService = {
-	async login(credentials: LoginCredentialInterface, setError: React.Dispatch<SetStateAction<ErrorState>>): Promise<LoginReponseInterface | unknown> {
+const authService = {
+	async login(credentials: LoginCredentials): Promise<ApiSuccessResponse<LoginSuccessResponse>> {
 		try {
-			const { data } = await api.post<LoginReponseInterface>(`/auth`, credentials);
-
+			const { data } = await api.post<ApiSuccessResponse<LoginSuccessResponse>>("/auth", credentials);
 			return data;
 		} catch (error) {
-			fetchError(error, setError);
+			throw error;
+		}
+	},
+
+	async logout(): Promise<void> {
+		try {
+			await api.delete("/auth");
+		} catch (error) {
+			throw error;
+		}
+	},
+
+	async refreshToken(): Promise<ApiSuccessResponse<RefreshTokenResponse>> {
+		try {
+			const { data } = await api.patch<ApiSuccessResponse<RefreshTokenResponse>>(
+				"/auth",
+				{},
+				{
+					withCredentials: true,
+				}
+			);
+			return data;
+		} catch (error) {
+			throw error;
+		}
+	},
+
+	async getAccount(): Promise<ApiSuccessResponse<Account> | null> {
+		try {
+			const response = await api.get<ApiSuccessResponse<Account>>("/auth");
+			if (!response) return null;
+			else return response.data;
+		} catch (error) {
+			console.error("Error in getAccount:", error);
+
+			if ((error as any).response?.status === 401) {
+				throw new ApiError("Access token expired", 401);
+			} else {
+				throw new ApiError("Failed to fetch account", (error as any).response?.status || 500);
+			}
 		}
 	},
 };
 
-export default AuthService;
+export default authService;
