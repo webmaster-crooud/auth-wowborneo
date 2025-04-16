@@ -6,11 +6,15 @@ import { AnimatePresence } from "framer-motion";
 import { LoadingComponent } from "@/components/ui/Loading";
 import { MainNavbar } from "@/components/Navbar/Main.navbar";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function RootTemplate({ children }: { children: React.ReactNode }) {
 	const pathName = usePathname();
 	const [isLoading, setIsLoading] = useState(true);
-
+	const { isAuthenticated } = useAuth();
+	if (isAuthenticated) {
+		window.location.href = `${process.env.NEXT_PUBLIC_HOME}`;
+	}
 	useEffect(() => {
 		// Simulasikan preloading asset/data
 		const timer = setTimeout(() => {

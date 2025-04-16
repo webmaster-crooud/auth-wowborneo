@@ -1,8 +1,17 @@
-import axios, { AxiosRequestConfig, AxiosError } from "axios";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import axios, { AxiosError } from "axios";
 import { ApiError } from "./ApiError";
-import { ApiErrorResponse } from "../types/main.type";
+import authService from "@/services/auth.service";
+import { ApiErrorResponse } from "@/types/main.type";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API; // Sesuaikan dengan base URL backend Anda
+
+// Extend Axios request config untuk menambahkan properti _retry
+declare module "axios" {
+	export interface InternalAxiosRequestConfig {
+		_retry?: boolean;
+	}
+}
 
 // Buat instance axios
 const api = axios.create({
@@ -24,10 +33,83 @@ api.interceptors.request.use(async (config) => {
 	return config;
 });
 
-// Error handler untuk response
+// Queue untuk request yang gagal karena token expired
+let isRefreshing = false;
+let failedQueue: Array<{ resolve: (value: any) => void; reject: (reason?: any) => void }> = [];
+
+const processQueue = (error?: Error, accessToken?: string) => {
+	failedQueue.forEach((prom) => {
+		if (error) {
+			prom.reject(error);
+		} else {
+			prom.resolve(accessToken);
+		}
+	});
+	failedQueue = [];
+};
+
+// Interceptor response untuk menangani error dan refresh token
 api.interceptors.response.use(
 	(response) => response,
-	(error: AxiosError<ApiErrorResponse>) => {
+	async (error: AxiosError<ApiErrorResponse>) => {
+		const originalRequest = error.config;
+
+		// Pastikan originalRequest tidak undefined
+		if (!originalRequest) {
+			console.error("Original request is undefined");
+			return Promise.reject(new Error("Original request is undefined"));
+		}
+
+		// Handle CSRF token errors
+		if (error.response?.status === 403 && error.response.data.message === "invalid csrf token") {
+			try {
+				// Refresh CSRF token
+				const csrfResponse = await axios.get<{ csrfToken: string }>(`${BASE_URL}/csrf-token`, {
+					withCredentials: true,
+				});
+				csrfToken = csrfResponse.data.csrfToken;
+
+				// Retry the original request with the new CSRF token
+				originalRequest.headers["X-CSRF-Token"] = csrfToken;
+				return api(originalRequest);
+			} catch (csrfError) {
+				console.error("Failed to refresh CSRF token:", csrfError);
+				return Promise.reject(csrfError);
+			}
+		}
+
+		// Handle 401 Unauthorized errors
+		if (error.response?.status === 401 && !originalRequest._retry) {
+			if (isRefreshing) {
+				return new Promise((resolve, reject) => {
+					failedQueue.push({ resolve, reject });
+				})
+					.then((accessToken) => {
+						originalRequest.headers["Authorization"] = `Bearer ${accessToken}`;
+						return api(originalRequest);
+					})
+					.catch((err) => Promise.reject(err));
+			}
+
+			originalRequest._retry = true;
+			isRefreshing = true;
+
+			try {
+				const { data } = await authService.refreshToken();
+				api.defaults.headers.common["Authorization"] = `Bearer ${data.accessToken}`;
+				originalRequest.headers["Authorization"] = `Bearer ${data.accessToken}`;
+				processQueue(undefined, data.accessToken);
+				return api(originalRequest);
+			} catch (refreshError) {
+				processQueue(refreshError as Error);
+				window.location.href = "/";
+				return Promise.reject(refreshError);
+			} finally {
+				isRefreshing = false;
+			}
+		}
+
+		// Handle other errors
 		if (error.response) {
 			const { data, status } = error.response;
 			if (data.errors && data.errors.length > 0) {
@@ -36,60 +118,8 @@ api.interceptors.response.use(
 				throw new ApiError(data.message, status);
 			}
 		} else {
-			throw new Error("Network Error");
+			// throw new Error("Network Error");
 		}
-	}
-);
-
-// Variabel untuk mengelola refresh token
-let isRefreshing = false;
-let failedRequests: ((token?: string) => void)[] = [];
-
-// Interceptor untuk refresh token secara otomatis
-api.interceptors.response.use(
-	(response) => response,
-	async (error: AxiosError<ApiErrorResponse>) => {
-		const originalRequest = error.config as AxiosRequestConfig & {
-			_retry?: boolean;
-		};
-
-		// Jika error 401 dan belum pernah mencoba refresh
-		if (error.response?.status === 401 && !originalRequest._retry) {
-			if (isRefreshing) {
-				// Tambahkan request ke antrian
-				return new Promise((resolve) => {
-					failedRequests.push(() => {
-						resolve(api(originalRequest));
-					});
-				});
-			}
-
-			isRefreshing = true;
-			originalRequest._retry = true;
-
-			try {
-				// Lakukan refresh token
-				await api.patch("/auth", {}, { withCredentials: true });
-				isRefreshing = false;
-
-				// Jalankan kembali request yang gagal
-				failedRequests.forEach((cb) => cb());
-				failedRequests = [];
-
-				// Ulang request original
-				return api(originalRequest);
-			} catch (refreshError) {
-				isRefreshing = false;
-				failedRequests = [];
-
-				// Redirect ke halaman login jika refresh gagal
-				window.location.href = process.env.NEXT_PUBLIC_BASE_URL + "/login";
-				return Promise.reject(refreshError);
-			}
-		}
-
-		// Jika bukan error 401, lempar error seperti biasa
-		return Promise.reject(error);
 	}
 );
 

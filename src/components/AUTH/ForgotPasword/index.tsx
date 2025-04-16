@@ -1,6 +1,7 @@
 "use client";
 import { InputForm } from "@/components/ui/Form/Input.form";
 import { errorAtom } from "@/stores/main.store";
+import { api } from "@/utils/api";
 import { fetchError } from "@/utils/fetchError";
 import { IconArrowBack, IconLoader, IconLockAccess } from "@tabler/icons-react";
 import { useSetAtom } from "jotai";
@@ -16,11 +17,20 @@ export function ForgotPassword() {
 		e.preventDefault();
 		setLoading({ field: "forgot" });
 		try {
-			await new Promise((resolve) => setTimeout(resolve, 1500));
-			router.push(`/forgot-password/verify/${email}`);
+			const { data } = await api.post(
+				`${process.env.NEXT_PUBLIC_API}/auth/forgot-password/${email}`,
+				{},
+				{
+					withCredentials: true,
+					headers: { "Content-Type": "application/json" },
+				}
+			);
+
+			window.location.href = data.data;
 		} catch (error) {
 			fetchError(error, setError);
 		} finally {
+			setLoading({ field: "" });
 		}
 	};
 	return (

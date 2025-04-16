@@ -14,7 +14,6 @@ export const RegisterAuthentication = () => {
 	const setError = useSetAtom(errorAtom);
 	const [dataRegister, setDataRegister] = useState<RegisterInterface>({ firstName: "", lastName: "", email: "", phone: "", password: "", confirmPassword: "" });
 	const [loading, setLoading] = useAtom(loadingAtom);
-	console.log(dataRegister);
 
 	// console.log(localStorage.getItem("refreshToken"));
 	const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {

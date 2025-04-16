@@ -40,12 +40,11 @@ export function CustomerLoginAuthentication() {
 		setLoading({ field: "loading" });
 		try {
 			// await new Promise((resolve) => setTimeout(resolve, 1500));
-			const response = await AuthService.login(credential);
-			console.log(response);
+			const { data } = await AuthService.login(credential);
+			const { redirect } = data;
+			window.location.href = redirect;
 		} catch (error) {
 			fetchError(error, setError);
-		} finally {
-			setLoading({ field: "" });
 		}
 	}
 
@@ -70,10 +69,10 @@ export function CustomerLoginAuthentication() {
 				{loading.field === "login" ? (
 					<>
 						<IconLoader className="animate-spin" size={20} stroke={2} />
-						<span>Continue To Confirm</span>
+						<span>Loading...</span>
 					</>
 				) : (
-					<span>Continue To Confirm</span>
+					<span>Login</span>
 				)}
 			</button>
 		</form>

@@ -35,8 +35,6 @@ export function LoginAuthentication() {
 			window.location.href = redirect;
 		} catch (err) {
 			fetchError(err, setError);
-		} finally {
-			setLoading({ field: "" });
 		}
 	};
 
