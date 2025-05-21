@@ -1,10 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/services/auth.service.ts
 
+import { accessTokenAtom } from "@/stores/auth.store";
 import { Account, LoginCredentials, RefreshTokenResponse } from "@/types/auth.DTO";
 import { ApiSuccessResponse } from "@/types/main.type";
 import { api } from "@/utils/api";
 import { ApiError } from "@/utils/ApiError";
+import { atomToStore } from "@/utils/auth";
 interface LoginSuccessResponse {
 	redirect: string;
 	account: Account;
@@ -37,6 +39,7 @@ const authService = {
 					withCredentials: true,
 				}
 			);
+			atomToStore(accessTokenAtom, data.data.accessToken);
 			return data;
 		} catch (error) {
 			throw error;
@@ -57,6 +60,19 @@ const authService = {
 				throw new ApiError("Failed to fetch account", (error as any).response?.status || 500);
 			}
 		}
+	},
+
+	// Di auth.service.ts
+	async clearSession() {
+		// Hapus cookie
+		document.cookie = "accessToken=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+		document.cookie = "connect.sid=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+
+		// Hapus local storage
+		localStorage.removeItem("refreshToken");
+
+		// Reset state Jotai
+		atomToStore(accessTokenAtom, null);
 	},
 };
 

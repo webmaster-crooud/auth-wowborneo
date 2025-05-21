@@ -1,34 +1,58 @@
 "use client";
 
 import { useEffect } from "react";
-import { useAtom, useSetAtom } from "jotai";
+import { useSetAtom } from "jotai";
 import { accountAtom, isLoadingAtom } from "@/stores/auth.store";
 import authService from "@/services/auth.service";
 import { ApiError } from "@/utils/ApiError";
+import { usePathname, useRouter } from "next/navigation";
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-	const [account, setAccount] = useAtom(accountAtom);
+	const setAccount = useSetAtom(accountAtom);
 	const setIsLoading = useSetAtom(isLoadingAtom);
+	const router = useRouter();
+	const pathname = usePathname();
 
 	useEffect(() => {
 		const initializeAuth = async () => {
-			try {
-				const response = await authService.getAccount();
-				if (!response) return null;
-				else setAccount(response?.data);
-			} catch (error) {
-				if ((error as ApiError).statusCode === 401) {
-					try {
-						const { data: refreshTokenData } = await authService.refreshToken();
-						console.log("Refresh token successful:", refreshTokenData);
+			setIsLoading(true);
 
-						// Retry fetching account data with the new token
-						const response = await authService.getAccount();
-						if (!response) return null;
-						else setAccount(response.data);
+			try {
+				// 1. Cek cookie accessToken atau session langsung
+				const hasAccessToken = document.cookie.includes("accessToken");
+				const hasSession = document.cookie.includes("connect.sid");
+
+				// Jika tidak ada session sama sekali
+				if (!hasAccessToken && !hasSession) {
+					setAccount(null);
+					return;
+				}
+
+				// 2. Coba ambil data akun
+				const data = await authService.getAccount();
+				setAccount(data?.data || null);
+			} catch (error) {
+				const apiError = error as ApiError;
+
+				// 3. Handle 401 Unauthorized
+				if (apiError.statusCode === 401) {
+					try {
+						// 4. Coba refresh token
+						await authService.refreshToken();
+
+						// 5. Retry get account setelah refresh
+						const newResponse = await authService.getAccount();
+						setAccount(newResponse?.data || null);
 					} catch {
+						// 6. Bersihkan session jika gagal refresh
+						authService.clearSession();
 						setAccount(null);
-						window.location.href = `${process.env.NEXT_PUBLIC_HOME}`;
+
+						// 7. Redirect hanya jika di protected route
+						const isProtectedRoute = !pathname.startsWith("/auth");
+						if (isProtectedRoute) {
+							router.push(process.env.NEXT_PUBLIC_HOME!);
+						}
 					}
 				} else {
 					setAccount(null);
@@ -38,11 +62,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 			}
 		};
 
-		if (!account) {
-			setIsLoading(false);
-			initializeAuth();
-		}
-	}, [setAccount, account, setIsLoading]);
+		initializeAuth();
+	}, [setAccount, setIsLoading, router, pathname]);
 
 	return children;
 };

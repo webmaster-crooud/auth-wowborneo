@@ -5,3 +5,5 @@ import { atom } from "jotai";
 export const accountAtom = atom<Account | null>(null);
 export const isAuthenticatedAtom = atom((get) => !!get(accountAtom));
 export const isLoadingAtom = atom<boolean>(true);
+
+export const accessTokenAtom = atom<string | null>(null);
